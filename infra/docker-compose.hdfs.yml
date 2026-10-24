@@ -1,0 +1,68 @@
+
+services:
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-namenode
+    hostname: namenode
+
+    ports:
+      - "9870:9870"
+
+    environment:
+      CLUSTER_NAME: voguemind
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: "2"
+
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+
+    networks:
+      - voguemind-net
+
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-datanode1
+    hostname: datanode1
+
+    depends_on:
+      - namenode
+
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: "2"
+      SERVICE_PRECONDITION: namenode:9870
+
+    volumes:
+      - datanode1_data:/hadoop/dfs/data
+
+    networks:
+      - voguemind-net
+
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-datanode2
+    hostname: datanode2
+
+    depends_on:
+      - namenode
+
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: "2"
+      SERVICE_PRECONDITION: namenode:9870
+
+    volumes:
+      - datanode2_data:/hadoop/dfs/data
+
+    networks:
+      - voguemind-net
+
+volumes:
+  namenode_data:
+  datanode1_data:
+  datanode2_data:
+
+networks:
+  voguemind-net:
+    name: voguemind-net
