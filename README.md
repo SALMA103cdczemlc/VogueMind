@@ -31,11 +31,11 @@ ingestion/
   producer.py
   consumer.py
 
-infrastructure/
+infra/
   kafka-compose.yml
 
-notebooks/
-  exploration_hm.ipynb
+notebook/
+  FashionIQ.ipynb
 ```
 
 ## Exécution de la partie Kafka
@@ -49,7 +49,7 @@ python -m pip install pandas kafka-python
 Démarrer Kafka :
 
 ```bash
-docker compose -f infrastructure/kafka-compose.yml up -d
+docker compose -f infra/kafka-compose.yml up -d
 ```
 
 Lancer le producteur :
@@ -63,6 +63,33 @@ Lancer le consommateur :
 ```bash
 python ingestion/consumer.py
 ```
+
+## Nada Rian — Apache Spark et intégration
+
+Travail réalisé :
+- Cluster Spark standalone : 1 Master et 2 Workers (image Spark 3.5.3 avec connecteur Kafka intégré).
+- `docker-compose.yml` commun à la racine : HDFS + Kafka + Spark sur le réseau `voguemind-net`.
+- Deux listeners Kafka : `localhost:9092` pour la machine hôte, `kafka:29092` pour les conteneurs Spark.
+- Tests de communication entre conteneurs et tests d'intégration Spark → HDFS et Kafka → Spark → HDFS.
+
+Documentation détaillée : [infra/README-SPARK.md](infra/README-SPARK.md)
+
+## Lancement du pipeline complet (compose commun)
+
+```bash
+cp .env.example .env                  # optionnel
+docker compose up -d --build          # HDFS + Kafka + Spark
+docker compose ps                     # attendre l'état "healthy"
+./scripts/verify_integration.sh       # tests d'intégration
+```
+
+| Interface | URL |
+|---|---|
+| Spark Master | http://localhost:8080 |
+| Spark Workers | http://localhost:8081 · http://localhost:8082 |
+| HDFS NameNode | http://localhost:9870 |
+
+Le producteur et le consommateur Python fonctionnent sans modification avec ce compose (`localhost:9092`).
 
 ## Dataset
 Source : H&M Personalized Fashion Recommendations sur Kaggle.
