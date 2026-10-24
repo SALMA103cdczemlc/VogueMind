@@ -1,7 +1,7 @@
 # VogueMind
 
 ## Présentation
-FashionIQ est un projet Big Data de recommandation personnalisée de vêtements utilisant le dataset H&M Personalized Fashion Recommendations.
+VogueMind est un projet Big Data de recommandation personnalisée de vêtements utilisant le dataset H&M Personalized Fashion Recommendations.
 
 ## Technologies
 - Python et Pandas
