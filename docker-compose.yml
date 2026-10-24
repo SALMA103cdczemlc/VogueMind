@@ -1,0 +1,281 @@
+# =============================================================================
+#  VogueMind — Pipeline Big Data de bout en bout
+#  Docker Compose COMMUN : HDFS + Kafka + Spark sur un seul réseau Docker
+#
+#   HDFS  (1 NameNode + 2 DataNodes, réplication 2) ... config de Salma Hilali
+#   Kafka (KRaft, topic fashion-transactions) ......... config de Safae Benhaddou
+#   Spark (1 Master + 2 Workers) + intégration ........ Nada Rian
+#
+#  Démarrage    : docker compose up -d --build
+#  Vérification : ./scripts/verify_integration.sh
+#
+#  Remplace infra/docker-compose.hdfs.yml et infra/kafka-compose.yml pour
+#  le lancement du pipeline complet (ne pas lancer les deux en même temps :
+#  mêmes noms de conteneurs et même réseau).
+# =============================================================================
+
+name: voguemind
+
+x-spark-common: &spark-common
+  build:
+    context: ./infra/spark
+    args:
+      SPARK_IMAGE: ${SPARK_IMAGE:-spark:3.5.3-scala2.12-java17-python3-ubuntu}
+  image: voguemind/spark:3.5.3
+  networks:
+    - voguemind-net
+  volumes:
+    - ./infra/spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+    - ./infra/spark/conf/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
+    - ./ingestion:/opt/voguemind/ingestion:ro
+    - ./batch:/opt/voguemind/batch:ro
+    - ./streaming:/opt/voguemind/streaming:ro
+    - ./tests:/opt/voguemind/tests:ro
+    - ./data:/opt/voguemind/data
+
+x-hadoop-common: &hadoop-common
+  platform: linux/amd64          # images amd64 uniquement (émulées sur Mac Apple Silicon)
+  env_file:
+    - ./infra/hadoop/hadoop.env
+  networks:
+    - voguemind-net
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Stockage : HDFS — 1 NameNode + 2 DataNodes, réplication 2, volumes distincts
+  # ---------------------------------------------------------------------------
+  namenode:
+    <<: *hadoop-common
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-namenode
+    hostname: namenode
+    environment:
+      CLUSTER_NAME: voguemind
+    ports:
+      - "9870:9870"     # Interface web HDFS
+      - "9000:9000"     # RPC HDFS (fs.defaultFS)
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9870/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  datanode1:
+    <<: *hadoop-common
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-datanode1
+    hostname: datanode1
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    ports:
+      - "9864:9864"
+    volumes:
+      - datanode1_data:/hadoop/dfs/data
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9864/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  datanode2:
+    <<: *hadoop-common
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-datanode2
+    hostname: datanode2
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    ports:
+      - "9865:9864"
+    volumes:
+      - datanode2_data:/hadoop/dfs/data
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9864/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  # One-shot : arborescence /voguemind (mêmes dossiers que README-HDFS + tests)
+  hdfs-init:
+    <<: *hadoop-common
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: voguemind-hdfs-init
+    depends_on:
+      datanode1:
+        condition: service_healthy
+      datanode2:
+        condition: service_healthy
+    command: >
+      bash -c "hdfs dfsadmin -safemode wait &&
+               hdfs dfs -mkdir -p /voguemind/raw /voguemind/processed /voguemind/checkpoints /voguemind/models /voguemind/tests &&
+               hdfs dfs -ls /voguemind &&
+               echo 'HDFS initialise'"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Ingestion : Kafka (KRaft) — deux listeners :
+  #   localhost:9092  -> machine hôte (ingestion/producer.py, consumer.py inchangés)
+  #   kafka:29092     -> conteneurs du réseau (jobs Spark)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: voguemind-kafka
+    hostname: kafka
+    networks:
+      - voguemind-net
+    ports:
+      - "9092:9092"
+    environment:
+      CLUSTER_ID: "4L6g3nShT-eMCtK--X86sw"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "HOST://:9092,INTERNAL://:29092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "HOST://localhost:9092,INTERNAL://kafka:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "HOST:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  # One-shot : création des topics
+  kafka-init:
+    image: apache/kafka:4.0.0
+    container_name: voguemind-kafka-init
+    networks:
+      - voguemind-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        K=/opt/kafka/bin/kafka-topics.sh
+        $$K --bootstrap-server kafka:29092 --create --if-not-exists --topic fashion-transactions --partitions 3 --replication-factor 1
+        $$K --bootstrap-server kafka:29092 --create --if-not-exists --topic integration-tests --partitions 3 --replication-factor 1
+        $$K --bootstrap-server kafka:29092 --list
+        echo "Topics Kafka initialises"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Traitement : Spark standalone — 1 Master + 2 Workers
+  # ---------------------------------------------------------------------------
+  spark-master:
+    <<: *spark-common
+    container_name: voguemind-spark-master
+    hostname: spark-master
+    environment:
+      SPARK_HOME: /opt/spark
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+      HADOOP_USER_NAME: root
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-master --port 7077 --webui-port 8080
+    ports:
+      - "8080:8080"     # Interface web Spark Master
+      - "7077:7077"     # Port du cluster Spark
+      - "4040:4040"     # Interface web de l'application en cours
+    depends_on:
+      namenode:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  spark-worker-1:
+    <<: *spark-common
+    container_name: voguemind-spark-worker-1
+    hostname: spark-worker-1
+    environment:
+      SPARK_HOME: /opt/spark
+      PYSPARK_PYTHON: python3
+      HADOOP_USER_NAME: root
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-2}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-2g}
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077 --webui-port 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  spark-worker-2:
+    <<: *spark-common
+    container_name: voguemind-spark-worker-2
+    hostname: spark-worker-2
+    environment:
+      SPARK_HOME: /opt/spark
+      PYSPARK_PYTHON: python3
+      HADOOP_USER_NAME: root
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-2}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-2g}
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077 --webui-port 8081
+    ports:
+      - "8082:8081"
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  voguemind-net:
+    name: voguemind-net
+    driver: bridge
+
+volumes:
+  namenode_data:
+  datanode1_data:
+  datanode2_data:
+  kafka_data:
