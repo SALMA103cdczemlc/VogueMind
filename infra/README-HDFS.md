@@ -1,6 +1,7 @@
 # Hadoop HDFS — VogueMind 
 
 Réalisée par : Salma Hilali
+
 Responsabilité : Infrastructure Hadoop HDFS — Docker
 
 ## 1. Présentation
