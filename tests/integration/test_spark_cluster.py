@@ -60,7 +60,7 @@ def main() -> int:
 
     # 4) UDF Python : prouve que Python fonctionne sur les executors
     plus_one = F.udf(lambda x: x + 1, "long")
-    s = df.limit(1000).select(plus_one("id").alias("v")).agg(F.sum("v")).first()[0]
+    s = spark.range(1000).select(plus_one("id").alias("v")).agg(F.sum("v")).first()[0]
     results["UDF Python sur les executors"] = s == sum(range(1, 1001))
 
     print("\n--- Résultats ---")
