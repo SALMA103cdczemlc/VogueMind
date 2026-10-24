@@ -147,16 +147,48 @@ Les dossiers `ingestion/`, `batch/`, `streaming/`, `tests/` et `data/` du dépô
 
 ## 9. Captures d'écran
 
-À ajouter après exécution :
+Les captures suivantes présentent le déploiement du cluster commun et la validation de l'intégration.
 
-1. `docker compose ps` — tous les services `healthy`
-2. Interface Spark Master (http://localhost:8080) — 2 workers `ALIVE`
-3. Sortie de `./scripts/verify_integration.sh` — bilan sans échec
-4. Interface de l'application (http://localhost:4040) pendant `test_spark_cluster.py` — onglet *Executors* avec les 2 workers
-5. `hdfs fsck` sur `/voguemind/tests/spark_hdfs_check` — réplication 2
+### 9.1. Déploiement du compose commun
+
+Construction de l'image Spark, téléchargement des images Hadoop et Kafka, création du réseau `voguemind-net` et des 4 volumes persistants. Tous les services démarrent et deviennent `healthy` dans l'ordre défini par les `depends_on`.
+
+![Démarrage du compose commun](../docs/screenshots/spark/01-docker-compose-up.jpg)
+
+### 9.2. Cluster Spark : Master et 2 Workers
+
+L'interface du Spark Master (http://localhost:8080) affiche **2 workers `ALIVE`** (2 cœurs et 2 Go chacun, soit 4 cœurs et 4 Go au total). Les 7 applications terminées sont les tests d'intégration exécutés sur le cluster (`voguemind-test-spark-cluster`, `voguemind-test-hdfs`, `voguemind-test-kafka`).
+
+![Spark Master avec 2 workers](../docs/screenshots/spark/02-spark-master-2-workers.jpg)
+
+### 9.3. Communication entre les conteneurs
+
+Depuis le Master et depuis chacun des deux Workers, les 9 services du cluster sont résolus par leur nom (DNS Docker) et joignables sur leurs ports : Spark, NameNode, DataNodes et Kafka (`kafka:29092`). Le job de test s'exécute sur `spark-worker-1` et `spark-worker-2`.
+
+![Tests réseau et cluster](../docs/screenshots/spark/03-verify-reseau-cluster.jpg)
+
+### 9.4. Bilan des tests d'intégration
+
+Le script `./scripts/verify_integration.sh` valide les 10 vérifications : écriture Spark → HDFS avec **réplication 2**, et chaîne **Kafka → Spark Structured Streaming → HDFS** avec reprise sur checkpoint sans doublons.
+
+![Bilan 10 réussis, 0 échec](../docs/screenshots/spark/04-verify-bilan.jpg)
+
+### 9.5. Interface de l'application Spark
+
+Pendant une session PySpark soumise au cluster (http://localhost:4040), les jobs s'exécutent en tâches parallèles (4/4 tâches) et la frise montre l'ajout du driver puis de **4 executors** (Executors 0 à 3) répartis sur les deux Workers.
+
+![Jobs de l'application](../docs/screenshots/spark/05-application-ui-jobs.jpg)
+
+![Ajout des executors](../docs/screenshots/spark/06-application-ui-executors.jpg)
+
+### 9.6. Réplication des données écrites par Spark
+
+Le contrôle `hdfs fsck` sur `/voguemind/tests/spark_hdfs_check` (fichiers Parquet écrits par le job Spark) indique une **réplication moyenne de 2.0**, aucun bloc sous-répliqué, manquant ou corrompu, et un système **HEALTHY** : la réplication à 2 est bien appliquée aux écritures de Spark grâce au paramètre `spark.hadoop.dfs.replication 2`.
+
+![hdfs fsck : réplication 2](../docs/screenshots/spark/07-hdfs-fsck-replication.png)
 
 ---
 
 **Projet :** VogueMind
 **Composant :** Apache Spark + Intégration
-**Statut :** configuration et tests prêts — à exécuter et valider collectivement sur un poste avec Docker.
+**Statut :** cluster déployé et validé localement — 10 tests d'intégration réussis sur 10.
