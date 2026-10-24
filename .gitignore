@@ -1,0 +1,29 @@
+# Secrets / environnement local
+.env
+
+# Données (le dataset H&M ne doit pas être versionné : ~3,5 Go)
+data/*
+!data/.gitkeep
+*.csv
+*.parquet
+
+# Logs générés par les tests
+docs/test-logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
