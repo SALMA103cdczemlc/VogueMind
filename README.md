@@ -74,6 +74,11 @@ Travail réalisé :
 
 Documentation détaillée : [infra/README-SPARK.md](infra/README-SPARK.md)
 
+Semaine 2 — Kafka → Spark → HDFS → analyse batch : [docs/SEMAINE2-SPARK.md](docs/SEMAINE2-SPARK.md)
+- `streaming/kafka_to_hdfs.py` : Structured Streaming Kafka → HDFS (validation, rejets, checkpoint).
+- `batch/load_reference.py`, `batch/clean_transactions.py`, `batch/indicators.py` : référentiels, nettoyage, indicateurs métier.
+- `scripts/run_week2.sh` : démonstration complète.
+
 ## Lancement du pipeline complet (compose commun)
 
 ```bash
