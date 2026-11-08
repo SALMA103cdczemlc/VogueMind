@@ -309,7 +309,7 @@ Cette vérification confirme que les deux nœuds de stockage sont disponibles po
 
 **Capture : état des DataNodes HDFS**
 
-<!-- Ajouter ici le lien GitHub de la première nouvelle capture -->
+
 
 ### 9.8. Vérification du cluster Apache Spark
 
@@ -334,7 +334,8 @@ Cette étape confirme que le cluster Spark est opérationnel et prêt à exécut
 
 **Capture : Spark Master avec les deux workers actifs**
 
-<!-- Ajouter ici le lien GitHub de la deuxième nouvelle capture -->
+<img width="1883" height="875" alt="image" src="https://github.com/user-attachments/assets/b4ebe0e6-b199-49b7-a3a4-03bac5077fa4" />
+
 
 ### 9.9. Test d'intégration Spark-HDFS
 
@@ -376,7 +377,8 @@ Nous avons donc réussi à valider la communication entre Spark et HDFS.
 
 **Capture : résultat du test Spark-HDFS**
 
-<!-- Ajouter ici le lien GitHub de la troisième nouvelle capture -->
+<img width="915" height="390" alt="image" src="https://github.com/user-attachments/assets/407bae44-9e25-47d4-99f0-9165f0d84a59" />
+
 
 ## 10. Conclusion
 
