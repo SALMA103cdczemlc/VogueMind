@@ -1,23 +1,25 @@
 # Hadoop HDFS — VogueMind
 
-**Réalisée par :** Salma Hilali
+**Réalisée par :** Salma Hilali  
 **Responsabilité :** Infrastructure Hadoop HDFS — Docker
 
 ## 1. Présentation
 
-Dans le cadre du projet **VogueMind**, cette partie consiste à mettre en place une infrastructure de stockage distribué avec **Apache Hadoop HDFS**, déployée à l'aide de Docker Compose.
+Dans le cadre du projet **VogueMind**, ma partie consiste à mettre en place une infrastructure de stockage distribué avec **Apache Hadoop HDFS**, en utilisant Docker Compose.
 
-L'objectif est de disposer d'un environnement de stockage fiable, répliqué et persistant, destiné à accueillir les données du pipeline Big Data intégrant Apache Kafka et Apache Spark.
+L'objectif est de disposer d'un espace de stockage fiable et persistant pour les données du projet, qui utilise également Apache Kafka et Apache Spark.
+
+HDFS permet de stocker les fichiers sur plusieurs nœuds et de conserver plusieurs copies des blocs pour limiter les risques de perte de données.
 
 ## 2. Architecture HDFS
 
-L'infrastructure repose sur un cluster Hadoop composé de trois conteneurs Docker :
+L'infrastructure Hadoop est composée de trois conteneurs Docker :
 
-| Composant  | Conteneur             | Rôle                                                      |
-| ---------- | --------------------- | --------------------------------------------------------- |
-| NameNode   | `voguemind-namenode`  | Gestion des métadonnées et de l'organisation des fichiers |
-| DataNode 1 | `voguemind-datanode1` | Stockage des blocs de données                             |
-| DataNode 2 | `voguemind-datanode2` | Stockage des blocs et réplication                         |
+| Composant | Conteneur | Rôle |
+|---|---|---|
+| NameNode | `voguemind-namenode` | Gère les métadonnées et l'organisation des fichiers |
+| DataNode 1 | `voguemind-datanode1` | Stocke les blocs de données |
+| DataNode 2 | `voguemind-datanode2` | Stocke les blocs et participe à la réplication |
 
 ### Configuration technique
 
@@ -25,73 +27,79 @@ L'infrastructure repose sur un cluster Hadoop composé de trois conteneurs Docke
 - **Architecture :** 1 NameNode et 2 DataNodes
 - **Facteur de réplication :** 2
 - **Réseau Docker :** `voguemind-net`
-- **Stockage :** 3 volumes Docker persistants et indépendants
-- **Interface Web NameNode :** `http://localhost:9870`
+- **Stockage :** 3 volumes Docker persistants
+- **Interface Web NameNode :** http://localhost:9870
 - **Adresse HDFS interne :** `hdfs://namenode:9000`
 
-Chaque DataNode dispose de son propre volume Docker, permettant de conserver les données indépendamment du cycle de vie des conteneurs.
+Chaque DataNode possède son propre volume Docker pour conserver les données même après l'arrêt ou la recréation des conteneurs.
 
 ## 3. Déploiement du cluster
 
 ### Prérequis
 
+Pour démarrer l'infrastructure, nous avons utilisé :
+
 - Docker Desktop
 - Docker Compose
 
-Depuis la racine du projet, exécuter :
+Depuis la racine du projet, nous avons exécuté :
 
 ```bash
 docker compose -f infra/docker-compose.hdfs.yml up -d
 ```
 
-Vérifier ensuite l'état des conteneurs :
+Pour vérifier l'état des conteneurs :
 
 ```bash
 docker compose -f infra/docker-compose.hdfs.yml ps
 ```
 
-Les trois conteneurs doivent être démarrés et afficher l'état `healthy`.
+Les trois conteneurs ont été démarrés avec succès et affichent l'état `healthy`.
 
 ## 4. Vérification du cluster
 
-### Vérification des DataNodes
+### 4.1. Vérification des DataNodes
+
+Pour vérifier que les deux DataNodes sont connectés au NameNode, nous avons utilisé :
 
 ```bash
 docker exec voguemind-namenode hdfs dfsadmin -report
 ```
 
-Résultat obtenu :
+**Résultat obtenu :**
 
 ```text
 Live datanodes (2):
 ```
 
-Les deux DataNodes sont correctement enregistrés auprès du NameNode.
+Ce résultat confirme que les deux DataNodes sont reconnus par le NameNode.
 
-### Vérification du facteur de réplication
+### 4.2. Vérification du facteur de réplication
+
+Commande utilisée :
 
 ```bash
 docker exec voguemind-namenode hdfs getconf -confKey dfs.replication
 ```
 
-Résultat obtenu :
+**Résultat obtenu :**
 
 ```text
 2
 ```
 
-Le cluster est configuré pour stocker deux copies de chaque bloc de données par défaut.
+Le facteur de réplication est donc configuré à 2. Cela signifie que HDFS cherche à conserver deux copies de chaque bloc de données.
 
 ## 5. Organisation du stockage HDFS
 
-Quatre répertoires ont été créés pour organiser les données du projet.
+Pour organiser les données de VogueMind, nous avons créé quatre répertoires.
 
-| Répertoire               | Utilisation prévue                                     |
-| ------------------------ | ------------------------------------------------------ |
-| `/voguemind/raw`         | Stockage des données brutes                            |
-| `/voguemind/processed`   | Stockage des données transformées par Spark            |
-| `/voguemind/checkpoints` | Sauvegarde des checkpoints des traitements streaming   |
-| `/voguemind/models`      | Répertoire réservé à d'éventuels artefacts analytiques |
+| Répertoire | Utilisation |
+|---|---|
+| `/voguemind/raw` | Données brutes |
+| `/voguemind/processed` | Données traitées par Spark |
+| `/voguemind/checkpoints` | Checkpoints des traitements streaming |
+| `/voguemind/models` | Éventuels fichiers de modèles ou résultats analytiques |
 
 ### Création des répertoires
 
@@ -105,7 +113,7 @@ docker exec voguemind-namenode hdfs dfs -mkdir -p /voguemind/raw /voguemind/proc
 docker exec voguemind-namenode hdfs dfs -ls /voguemind
 ```
 
-Résultat obtenu :
+**Résultat obtenu :**
 
 ```text
 Found 4 items
@@ -115,35 +123,39 @@ Found 4 items
 /voguemind/raw
 ```
 
+Cette organisation permet de séparer les données selon leur utilisation dans le projet.
+
 ## 6. Tests de fonctionnement
 
-Plusieurs tests ont été réalisés pour valider le bon fonctionnement de l'infrastructure.
+Après le déploiement, plusieurs tests ont été réalisés pour vérifier que HDFS fonctionne correctement.
 
 ### 6.1. Test d'écriture et de lecture
 
-Un fichier `test.txt` a été créé, transféré dans HDFS, puis relu.
+Nous avons créé un fichier `test.txt`, puis nous l'avons transféré dans HDFS.
 
-Commande de lecture :
+Pour vérifier son contenu :
 
 ```bash
 docker exec voguemind-namenode hdfs dfs -cat /voguemind/raw/test.txt
 ```
 
-Résultat obtenu :
+**Résultat :**
 
 ```text
 VogueMind HDFS test
 ```
 
-Ce test confirme que le système permet d'écrire et de récupérer les données.
+Le fichier a été correctement enregistré et relu depuis HDFS.
 
 ### 6.2. Test de réplication
+
+Pour vérifier la réplication du fichier :
 
 ```bash
 docker exec voguemind-namenode hdfs fsck /voguemind/raw/test.txt -files -blocks -locations
 ```
 
-Résultats obtenus :
+**Résultats obtenus :**
 
 ```text
 replication=2
@@ -155,101 +167,113 @@ Missing blocks: 0
 Corrupt blocks: 0
 ```
 
-Le fichier est correctement répliqué sur les deux DataNodes, sans bloc manquant ou corrompu.
+Ce test confirme que le fichier possède bien deux répliques et qu'aucun bloc n'est manquant ou corrompu.
 
 ### 6.3. Test de persistance
 
-Un test a été réalisé pour vérifier la conservation des données après suppression et recréation des conteneurs.
+Nous avons également vérifié que les fichiers restent disponibles après l'arrêt et la recréation des conteneurs.
+
+Commandes utilisées :
 
 ```bash
 docker compose -f infra/docker-compose.hdfs.yml down
 docker compose -f infra/docker-compose.hdfs.yml up -d
 ```
 
-Après la reconnexion des DataNodes, le fichier de test est resté accessible.
+Après le redémarrage, le fichier de test était toujours accessible.
 
-Ce résultat confirme le fonctionnement des volumes Docker persistants.
+Ce résultat confirme que les volumes Docker permettent de conserver les données.
 
 ## 7. Intégration avec Kafka et Spark
 
 L'infrastructure HDFS constitue la couche de stockage du pipeline Big Data VogueMind.
 
-- **Apache Kafka :** ingestion des données.
-- **Apache Spark :** traitement et analyse des données.
-- **Apache Hadoop HDFS :** stockage distribué des données brutes et traitées.
+Chaque technologie possède un rôle :
 
-Adresse HDFS interne :
+- **Apache Kafka :** ingestion et transmission des données.
+- **Apache Spark :** traitement et transformation des données.
+- **Apache Hadoop HDFS :** stockage distribué des fichiers.
+
+L'adresse utilisée pour accéder à HDFS depuis les conteneurs du réseau est :
 
 ```text
 hdfs://namenode:9000
 ```
 
-L'intégration complète avec Kafka et Spark reste à réaliser et à valider collectivement.
+L'intégration entre Spark et HDFS a été testée avec succès. L'intégration complète du pipeline avec Kafka reste à finaliser.
 
 ## 8. Arrêt du cluster
 
-Pour arrêter l'infrastructure sans supprimer les volumes :
+Pour arrêter les conteneurs sans supprimer les volumes :
 
 ```bash
 docker compose -f infra/docker-compose.hdfs.yml down
 ```
 
-**Attention :** ne pas utiliser `down -v`, car cette commande supprimerait également les volumes Docker du projet.
+**Attention :** il ne faut pas utiliser `down -v` si nous souhaitons conserver les volumes Docker et les données enregistrées.
 
-## 9. Captures d'écran
+## 9. Captures d'écran et résultats
+
+Cette partie présente les principales vérifications réalisées pendant la mise en place de l'infrastructure.
 
 ### 9.1. Déploiement du cluster Hadoop
 
-Les trois conteneurs Docker ont été démarrés avec succès et présentent l'état `healthy`.
+Les trois conteneurs Hadoop ont été démarrés avec succès et affichent l'état `healthy`.
 
-\<img width="1316" height="576" alt="Déploiement du cluster Hadoop" src="[https://github.com/user-attachments/assets/b816b35f-7939-4614-b737-29c4f9b5cff3](https://github.com/user-attachments/assets/b816b35f-7939-4614-b737-29c4f9b5cff3)" />
+![Déploiement du cluster Hadoop](https://github.com/user-attachments/assets/b816b35f-7939-4614-b737-29c4f9b5cff3)
 
-### 9.2. Stockage HDFS et état du NameNode
+### 9.2. État du NameNode HDFS
 
-L'interface Web Hadoop confirme que deux nœuds de stockage sont en service.
+L'interface Web du NameNode permet de consulter l'état général du cluster Hadoop.
 
-\<img width="1572" height="502" alt="Interface NameNode HDFS" src="[https://github.com/user-attachments/assets/6efe2349-9fde-4071-ad61-30a7a1eeb4ce](https://github.com/user-attachments/assets/6efe2349-9fde-4071-ad61-30a7a1eeb4ce)" />
+Elle confirme que les deux DataNodes sont connectés et opérationnels.
+
+![Interface NameNode HDFS](https://github.com/user-attachments/assets/6efe2349-9fde-4071-ad61-30a7a1eeb4ce)
 
 ### 9.3. Organisation des répertoires HDFS
 
-Les quatre répertoires `raw`, `processed`, `checkpoints` et `models` ont été créés.
+Les quatre répertoires `raw`, `processed`, `checkpoints` et `models` ont été créés pour organiser le stockage du projet.
 
-\<img width="852" height="212" alt="Répertoires HDFS" src="[https://github.com/user-attachments/assets/5afe36a5-4374-4673-bb01-74fbdaf9ef18](https://github.com/user-attachments/assets/5afe36a5-4374-4673-bb01-74fbdaf9ef18)" />
+![Répertoires HDFS](https://github.com/user-attachments/assets/5afe36a5-4374-4673-bb01-74fbdaf9ef18)
 
 ### 9.4. Vérification de la réplication
 
-Le test `hdfs fsck` confirme deux répliques effectives et un état global `HEALTHY`.
+La commande `hdfs fsck` a permis de vérifier l'état des blocs et leur réplication.
 
-\<img width="1287" height="533" alt="Réplication HDFS" src="[https://github.com/user-attachments/assets/45780cba-585b-49be-99bf-68ad6f596813](https://github.com/user-attachments/assets/45780cba-585b-49be-99bf-68ad6f596813)" />
+Le résultat `HEALTHY` confirme que le fichier testé ne présente aucun problème d'intégrité.
 
-### 9.5. Importation et lecture du dataset H&M — Semaine 2
+![Vérification de la réplication HDFS](https://github.com/user-attachments/assets/45780cba-585b-49be-99bf-68ad6f596813)
 
-Un échantillon de 1 000 articles a été extrait du fichier `articles.csv` du dataset H&M, puis transféré vers Hadoop HDFS.
+### 9.5. Importation du dataset H&M — Semaine 2
+
+Pendant la deuxième semaine, nous avons commencé à travailler avec le dataset H&M utilisé dans le projet VogueMind.
+
+Un échantillon de **1 000 articles** a été extrait du fichier `articles.csv`, puis importé dans HDFS.
 
 **Caractéristiques du fichier :**
 
-- Nom : `articles_sample.csv`
-- Nombre d'articles : 1 000
-- Taille : 355 997 octets
-- Chemin HDFS : `/voguemind/raw/articles_sample.csv`
+- **Nom :** `articles_sample.csv`
+- **Nombre d'articles :** 1 000
+- **Taille :** 355 997 octets
+- **Chemin HDFS :** `/voguemind/raw/articles_sample.csv`
 
 **Commandes utilisées :**
 
 ```bash
 docker cp ./data/articles_sample.csv voguemind-namenode:/tmp/articles_sample.csv
+
 docker exec voguemind-namenode hdfs dfs -put -f /tmp/articles_sample.csv /voguemind/raw/
+
 docker exec voguemind-namenode hdfs dfs -cat /voguemind/raw/articles_sample.csv
 ```
 
-**Résultat :** le contenu CSV est correctement accessible depuis HDFS, avec les informations des articles H&M (identifiants, noms, types de produits, couleurs et descriptions).
+Le fichier a été importé avec succès.
 
-**Capture : lecture des données H&M dans HDFS**
+Nous avons pu consulter les informations des articles, notamment leurs identifiants, leurs noms, leurs catégories, leurs couleurs et leurs descriptions.
 
-\<!-- Insérer ici la première capture image(20261108-011105).png depuis GitHub -->
+### 9.6. Vérification de l'intégrité du dataset H&M
 
-### 9.6. Vérification de l'intégrité du dataset H&M — Semaine 2
-
-Après l'importation, une vérification a été effectuée à l'aide de la commande :
+Après l'importation, nous avons vérifié l'état du fichier avec la commande :
 
 ```bash
 docker exec voguemind-namenode hdfs fsck /voguemind/raw/articles_sample.csv -files -blocks -locations
@@ -264,12 +288,113 @@ Total size: 355997 B
 Total files: 1
 ```
 
-Le fichier est correctement stocké dans HDFS et le contrôle d'intégrité ne signale aucun problème. La configuration HDFS prévoit un facteur de réplication de 2.
+Le fichier est correctement stocké dans HDFS et aucun problème d'intégrité n'a été détecté.
 
+Le cluster utilise un facteur de réplication de 2.
 
+### 9.7. Vérification des deux DataNodes HDFS
+
+Nous avons consulté l'onglet **Datanodes** de l'interface Hadoop afin de vérifier l'état des nœuds de stockage.
+
+**Résultats observés :**
+
+- 2 DataNodes en service.
+- Les deux nœuds sont actifs.
+- Capacité affichée : environ 1006,85 Go par DataNode.
+- Version Hadoop : 3.2.1.
+
+L'histogramme montre également que l'espace disque utilisé reste très faible.
+
+Cette vérification confirme que les deux nœuds de stockage sont disponibles pour les traitements du projet.
+
+**Capture : état des DataNodes HDFS**
+
+<!-- Ajouter ici le lien GitHub de la première nouvelle capture -->
+
+### 9.8. Vérification du cluster Apache Spark
+
+Nous avons ensuite consulté l'interface Web de **Spark Master** afin de vérifier que les workers étaient bien démarrés.
+
+**Résultats obtenus :**
+
+| Élément | Résultat |
+|---|---|
+| Version Spark | 3.5.3 |
+| Spark Master | `spark://spark-master:7077` |
+| Workers actifs | 2 |
+| Cœurs disponibles | 2 |
+| Mémoire totale | 2 Go |
+| Statut | ALIVE |
+
+Les deux workers possèdent chacun un cœur CPU et 1 Go de mémoire.
+
+Au moment de la capture, aucune application Spark n'était en cours d'exécution.
+
+Cette étape confirme que le cluster Spark est opérationnel et prêt à exécuter des traitements distribués.
+
+**Capture : Spark Master avec les deux workers actifs**
+
+<!-- Ajouter ici le lien GitHub de la deuxième nouvelle capture -->
+
+### 9.9. Test d'intégration Spark-HDFS
+
+Pour terminer les vérifications, nous avons réalisé un test afin de confirmer que Spark peut écrire et lire des données dans Hadoop HDFS.
+
+Le test a été effectué avec **10 000 lignes de données**, enregistrées au format Parquet.
+
+**Chemin HDFS utilisé :**
+
+```text
+hdfs://namenode:9000/voguemind/tests/spark_hdfs_check
+```
+
+Après l'écriture, les données ont été relues pour vérifier leur intégrité.
+
+**Résultats obtenus :**
+
+```text
+Écriture Parquet terminée
+Facteur(s) de réplication observé(s) : [2]
+
+--- Résultats ---
+[OK] Relecture de 10000 lignes
+[OK] Partitionnement par date (22 jours)
+[OK] Schéma conservé
+[OK] Réplication HDFS = 2
+RESULTAT : intégration Spark-HDFS opérationnelle
+```
+
+Ce test a permis de confirmer que :
+
+- Spark peut enregistrer des données dans HDFS.
+- Les 10 000 lignes ont été relues correctement.
+- Le partitionnement par date fonctionne sur 22 jours.
+- Le schéma des données est conservé.
+- Les blocs sont répliqués avec un facteur de 2.
+
+Nous avons donc réussi à valider la communication entre Spark et HDFS.
+
+**Capture : résultat du test Spark-HDFS**
+
+<!-- Ajouter ici le lien GitHub de la troisième nouvelle capture -->
+
+## 10. Conclusion
+
+Cette partie du projet VogueMind m'a permis de mettre en place et de tester une infrastructure de stockage distribué avec Hadoop HDFS et Docker.
+
+J'ai commencé par configurer le NameNode et les deux DataNodes, puis j'ai vérifié leur fonctionnement, la réplication des fichiers et la persistance des données.
+
+Ensuite, nous avons importé un échantillon du dataset H&M dans HDFS et vérifié son intégrité.
+
+Enfin, nous avons testé l'intégration avec Apache Spark en écrivant et en relisant 10 000 lignes au format Parquet.
+
+Les tests ont été réalisés avec succès. L'infrastructure HDFS est maintenant fonctionnelle et peut être utilisée pour la suite du projet VogueMind.
+
+La prochaine étape consiste à poursuivre l'intégration des différents composants du pipeline Big Data, notamment Kafka, Spark et HDFS.
 
 ---
 
-**Projet :** VogueMind
-**Composant :** Infrastructure Hadoop HDFS
-**Statut :** Cluster déployé et validé localement — échantillon H&M importé et vérifié — intégration Kafka/Spark à venir.
+**Projet :** VogueMind  
+**Composant :** Infrastructure Hadoop HDFS  
+**Réalisée par :** Salma Hilali  
+**Statut :** Cluster HDFS opérationnel, dataset H&M importé et intégration Spark-HDFS validée.
