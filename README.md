@@ -78,6 +78,25 @@ Semaine 2 — Kafka → Spark → HDFS → analyse batch : [docs/SEMAINE2-SPARK.
 - `streaming/kafka_to_hdfs.py` : Structured Streaming Kafka → HDFS (validation, rejets, checkpoint).
 - `batch/load_reference.py`, `batch/clean_transactions.py`, `batch/indicators.py` : référentiels, nettoyage, indicateurs métier.
 - `scripts/run_week2.sh` : démonstration complète.
+## Salma Hilali — Hadoop HDFS et stockage distribué
+
+**Travail réalisé :**
+- Mise en place d'un cluster Hadoop HDFS avec Docker (1 NameNode et 2 DataNodes).
+- Configuration de la réplication HDFS = 2 et des volumes persistants.
+- Organisation des répertoires de stockage (`raw`, `processed`, `checkpoints`, `models`).
+- Importation et vérification d'un échantillon de 1 000 articles H&M.
+- Tests d'écriture, de lecture, de réplication et de persistance HDFS.
+- Validation de l'intégration Spark–HDFS avec des fichiers Parquet.
+- Développement d'un test automatique validant 100 transactions archivées dans 3 fichiers Parquet, avec 5 contrôles réussis.
+
+**Fichiers principaux :**
+- `infra/docker-compose.hdfs.yml`
+- `infra/hadoop/hadoop.env`
+- `infra/README-HDFS.md`
+- `tests/integration/test_hdfs_integration.py`
+- `tests/integration/test_pipeline_end_to_end.py`
+
+**Résultat :** Infrastructure HDFS opérationnelle, stockage distribué fonctionnel et intégration Spark–HDFS validée.
 
 ## Lancement du pipeline complet (compose commun)
 
