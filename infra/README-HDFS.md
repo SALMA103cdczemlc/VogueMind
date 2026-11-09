@@ -379,6 +379,37 @@ Nous avons donc réussi à valider la communication entre Spark et HDFS.
 
 <img width="915" height="390" alt="image" src="https://github.com/user-attachments/assets/407bae44-9e25-47d4-99f0-9165f0d84a59" />
 
+### 9.10. Validation du pipeline Kafka → Spark → HDFS
+
+Nous avons réalisé un test d'intégration avec 100 transactions du dataset H&M afin de vérifier leur transfert depuis Apache Kafka vers Hadoop HDFS à l'aide d'Apache Spark Structured Streaming.
+
+**Résultats obtenus :**
+
+```text
+[batch 0] 100 transactions archivées, 0 rejetées
+Job terminé.
+```
+
+Ce résultat confirme que Spark a traité les transactions reçues depuis Kafka et les a archivées dans HDFS au format Parquet.
+
+<img width="876" height="282" alt="image" src="https://github.com/user-attachments/assets/b7036212-645e-4af2-a281-cc5df9469468" />
+
+
+### 9.11. Vérification de la chaîne Producer → Kafka → Spark
+
+Un second test a permis de vérifier la transmission des transactions entre le producteur Python, Apache Kafka et Apache Spark.
+
+**Résultats obtenus :**
+
+```text
+Messages invalides (JSON non conforme) : 0
+OK chaîne producer.py -> Kafka -> Spark opérationnelle
+```
+
+Le test confirme que les messages analysés sont conformes au format JSON attendu et que la communication entre les trois composants fonctionne correctement.
+
+<img width="617" height="97" alt="image" src="https://github.com/user-attachments/assets/384a7196-3251-47b9-902f-0ce597f8159b" />
+
 
 ## 10. Conclusion
 
