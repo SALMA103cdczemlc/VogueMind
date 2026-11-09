@@ -409,6 +409,47 @@ OK chaîne producer.py -> Kafka -> Spark opérationnelle
 Le test confirme que les messages analysés sont conformes au format JSON attendu et que la communication entre les trois composants fonctionne correctement.
 
 <img width="617" height="97" alt="image" src="https://github.com/user-attachments/assets/384a7196-3251-47b9-902f-0ce597f8159b" />
+### 9.12. Test automatique de validation des données HDFS
+
+Pour compléter les tests d'intégration du projet VogueMind, j'ai développé un script Python permettant de vérifier automatiquement les transactions archivées dans Hadoop HDFS après leur traitement par Apache Spark.
+
+**Fichier réalisé :** `tests/integration/test_pipeline_end_to_end.py`
+
+Ce test vérifie :
+- La présence des transactions archivées dans HDFS.
+- La conformité du schéma des données.
+- La qualité des transactions enregistrées.
+- La présence des fichiers au format Parquet.
+- Le facteur de réplication HDFS égal à 2.
+
+**Commande d'exécution :**
+
+```powershell
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/voguemind/tests/integration/test_pipeline_end_to_end.py
+```
+
+**Résultats obtenus :**
+
+```text
+=== VOGUEMIND - VALIDATION HDFS ===
+Transactions archivees : 100
+Fichiers Parquet : 3
+[PASS] Transactions archivees
+[PASS] Schema attendu
+[PASS] Qualite des transactions
+[PASS] Fichiers Parquet presents
+[PASS] Replication HDFS = 2
+RESULTAT : SUCCES
+```
+
+Tous les contrôles ont réussi.
+
+Ce test confirme que les 100 transactions déjà traitées par le pipeline sont accessibles dans HDFS, que leur structure est conforme aux attentes et que les trois fichiers Parquet possèdent un facteur de réplication de 2.
+
+Le script constitue un livrable technique supplémentaire permettant de contrôler la sortie HDFS du pipeline, sans modifier les données existantes.
+
+**Capture d'écran : résultat du test automatique**
+<img width="571" height="296" alt="image" src="https://github.com/user-attachments/assets/fa4d5bea-1319-438d-a180-07e2e076deae" />
 
 
 ## 10. Conclusion
