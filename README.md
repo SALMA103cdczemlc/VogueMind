@@ -78,6 +78,17 @@ Semaine 2 — Kafka → Spark → HDFS → analyse batch : [docs/SEMAINE2-SPARK.
 - `streaming/kafka_to_hdfs.py` : Structured Streaming Kafka → HDFS (validation, rejets, checkpoint).
 - `batch/load_reference.py`, `batch/clean_transactions.py`, `batch/indicators.py` : référentiels, nettoyage, indicateurs métier.
 - `scripts/run_week2.sh` : démonstration complète.
+
+Semaine 3 — modèle ML de réachat à 7 jours : [docs/SEMAINE3-ML.md](docs/SEMAINE3-ML.md)
+- `batch/load_history.py` : historique des transactions (12 semaines) dans HDFS.
+- `batch/features.py`, `batch/train_model.py` : variables, référence, comparaison de 3 techniques (régression logistique, forêt aléatoire, gradient boosting), réglage, test et sauvegarde du modèle dans HDFS.
+- Résultats : `results/ml_metrics_v1.md` · lancement : `scripts/run_week3.sh`.
+
+Semaine 4 — temps réel, restitution et tableau de bord : [docs/SEMAINE4-TEMPS-REEL.md](docs/SEMAINE4-TEMPS-REEL.md)
+- `streaming/predict_stream.py` : charge le modèle, score chaque nouvelle transaction Kafka, écrit dans PostgreSQL et HDFS.
+- PostgreSQL (base de restitution) et tableau de bord Streamlit sur http://localhost:8501.
+- Lancement : `scripts/run_week4.sh`.
+
 ## Salma Hilali — Hadoop HDFS et stockage distribué
 
 **Travail réalisé :**
@@ -112,6 +123,8 @@ docker compose ps                     # attendre l'état "healthy"
 | Spark Master | http://localhost:8080 |
 | Spark Workers | http://localhost:8081 · http://localhost:8082 |
 | HDFS NameNode | http://localhost:9870 |
+| Tableau de bord VogueMind | http://localhost:8501 |
+| PostgreSQL (restitution) | localhost:5433 · base `voguemind` |
 
 Le producteur et le consommateur Python fonctionnent sans modification avec ce compose (`localhost:9092`).
 

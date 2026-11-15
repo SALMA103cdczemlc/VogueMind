@@ -6,6 +6,7 @@
 # Personne 1 : Kafka
 # Personne 2 : Hadoop HDFS
 # Personne 3 : Apache Spark et integration
+#              + Spark ML, PostgreSQL (restitution) et tableau de bord
 #
 # IMPORTANT :
 # - Reutilise les volumes Hadoop deja existants.
@@ -38,6 +39,7 @@ x-spark-common: &spark-common
     - ./streaming:/opt/voguemind/streaming:ro
     - ./tests:/opt/voguemind/tests:ro
     - ./data:/opt/voguemind/data
+    - ./results:/opt/voguemind/results
 
 # =============================================================================
 # CONFIGURATION COMMUNE HADOOP
@@ -305,6 +307,11 @@ services:
       PYSPARK_PYTHON: python3
       PYSPARK_DRIVER_PYTHON: python3
       HADOOP_USER_NAME: root
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: voguemind
+      POSTGRES_USER: voguemind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voguemind}
 
     command: >
       /opt/spark/bin/spark-class
@@ -419,6 +426,77 @@ services:
 
     restart: unless-stopped
 
+  # ===========================================================================
+  # RESTITUTION — POSTGRESQL (predictions temps reel + indicateurs)
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+
+    container_name: voguemind-postgres
+    hostname: postgres
+
+    networks:
+      - voguemind-net
+
+    environment:
+      POSTGRES_DB: voguemind
+      POSTGRES_USER: voguemind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voguemind}
+
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U voguemind -d voguemind
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+    restart: unless-stopped
+
+  # ===========================================================================
+  # TABLEAU DE BORD — STREAMLIT (http://localhost:8501)
+  # ===========================================================================
+
+  dashboard:
+    build:
+      context: ./dashboard
+
+    image: voguemind/dashboard:1.0
+
+    container_name: voguemind-dashboard
+
+    networks:
+      - voguemind-net
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: voguemind
+      POSTGRES_USER: voguemind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voguemind}
+      VOGUEMIND_RESULTS: /app/results
+
+    ports:
+      - "8501:8501"
+
+    volumes:
+      - ./results:/app/results:ro
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
 # =============================================================================
 # RESEAU COMMUN
 # =============================================================================
@@ -452,3 +530,7 @@ volumes:
   # Volume persistant Kafka
 
   kafka_data:
+
+  # Volume persistant PostgreSQL (base de restitution)
+
+  postgres_data:

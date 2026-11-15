@@ -14,7 +14,7 @@ ARG COMMONS_POOL2_VERSION=2.11.1
 ARG MAVEN=https://repo1.maven.org/maven2
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl python3-pip \
+ && apt-get install -y --no-install-recommends curl python3-pip procps \
  && rm -rf /var/lib/apt/lists/*
 
 # Connecteur Spark <-> Kafka et ses dépendances
@@ -26,6 +26,7 @@ RUN cd /opt/spark/jars \
  && chmod 644 /opt/spark/jars/*.jar
 
 # Dépendances Python (identiques sur le driver et les executors)
+# psycopg2 : écriture des prédictions et indicateurs dans PostgreSQL (base de restitution)
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 

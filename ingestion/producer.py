@@ -20,6 +20,8 @@ BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 parser = argparse.ArgumentParser()
 parser.add_argument("--limit", type=int, default=1000)
 parser.add_argument("--delay", type=float, default=0.1)
+parser.add_argument("--start-date", default=None,
+                    help="rejoue les transactions à partir de cette date (AAAA-MM-JJ)")
 args = parser.parse_args()
 
 if args.limit <= 0 or args.delay < 0:
@@ -47,14 +49,33 @@ except KafkaError as error:
     sys.exit(1)
 
 # Lecture d'un échantillon H&M
-transactions = pd.read_csv(
-    CSV_PATH,
-    nrows=args.limit,
-    dtype={
-        "customer_id": str,
-        "article_id": str
-    }
-)
+if args.start_date is None:
+    transactions = pd.read_csv(
+        CSV_PATH,
+        nrows=args.limit,
+        dtype={
+            "customer_id": str,
+            "article_id": str
+        }
+    )
+else:
+    # Le fichier est trié par date : lecture par blocs jusqu'à la date demandée.
+    # L'index d'origine est conservé pour garder des transaction_id uniques.
+    selected = []
+    remaining = args.limit
+    for chunk in pd.read_csv(
+        CSV_PATH,
+        chunksize=200_000,
+        dtype={"customer_id": str, "article_id": str}
+    ):
+        chunk = chunk[chunk["t_dat"] >= args.start_date]
+        if len(chunk):
+            selected.append(chunk.head(remaining))
+            remaining -= len(selected[-1])
+            if remaining <= 0:
+                break
+    transactions = pd.concat(selected) if selected else pd.DataFrame()
+    print(f"[INFO] Rejeu à partir du {args.start_date}")
 
 sent = 0
 failed = 0
