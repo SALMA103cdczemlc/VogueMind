@@ -17,7 +17,10 @@ dans cette unité normalisée (comparaisons relatives uniquement).
 
 Lancement :
     docker compose exec spark-master /opt/spark/bin/spark-submit /opt/voguemind/batch/indicators.py
+    # sur l'historique chargé par batch/load_history.py (semaine 3) :
+    docker compose exec spark-master /opt/spark/bin/spark-submit /opt/voguemind/batch/indicators.py --source history
 """
+import argparse
 import os
 import sys
 
@@ -41,10 +44,17 @@ def save(df, name, show=10):
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--source", choices=["stream", "history"], default="stream",
+                    help="stream = transactions reçues par Kafka ; history = historique chargé par load_history.py")
+    args = ap.parse_args()
     spark = SparkSession.builder.appName("voguemind-indicators").getOrCreate()
-    tx_path = f"{BASE}/processed/transactions"
+    tx_path = (f"{BASE}/processed/transactions" if args.source == "stream"
+               else f"{BASE}/processed/history/transactions")
+    print(f"Source des transactions : {tx_path}")
     if not exists(spark, tx_path):
-        print("ERREUR :", tx_path, "absent — lancer d'abord batch/clean_transactions.py")
+        print("ERREUR :", tx_path, "absent — lancer d'abord batch/clean_transactions.py "
+              "(source stream) ou batch/load_history.py (source history)")
         return 1
     tx = spark.read.parquet(tx_path).cache()
     tx.createOrReplaceTempView("transactions")
