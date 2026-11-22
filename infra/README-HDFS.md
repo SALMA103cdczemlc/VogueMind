@@ -451,24 +451,184 @@ Le script constitue un livrable technique supplémentaire permettant de contrôl
 **Capture d'écran : résultat du test automatique**
 <img width="571" height="296" alt="image" src="https://github.com/user-attachments/assets/fa4d5bea-1319-438d-a180-07e2e076deae" />
 
+### 9.13. Organisation et archivage de l'historique des transactions
+
+Cette semaine, nous avons poursuivi le traitement des transactions du dataset H&M avec Apache Spark.
+
+Les transactions traitées ont été archivées dans Hadoop HDFS afin de conserver un historique exploitable pour les analyses et les traitements ultérieurs.
+
+Le stockage est organisé dans le répertoire :
+
+```text
+/voguemind/processed/history/transactions
+```
+
+Les données sont organisées par date à l'aide de partitions, ce qui facilite leur consultation et leur traitement.
+
+La vérification du répertoire HDFS a permis de constater la présence de **85 éléments**, comprenant les partitions de données et le fichier `_SUCCESS`.
+
+Cette étape permet de conserver un historique structuré des transactions et de préparer les données pour les analyses métier et les expérimentations de machine learning.
+
+### 9.14. Calcul des indicateurs métier avec Apache Spark
+
+Nous avons également développé et exécuté un script Python nommé `indicators.py` pour calculer des indicateurs à partir des données archivées dans HDFS.
+
+Ce traitement utilise Apache Spark et Spark SQL afin d'exploiter les transactions stockées dans le système distribué.
+
+Les résultats sont enregistrés dans le répertoire :
+
+```text
+/voguemind/processed/indicators
+```
+
+Cette étape permet de transformer les données transactionnelles en informations synthétiques utiles à l'analyse du comportement des clients et au suivi de l'activité.
+
+Le calcul des indicateurs constitue une étape intermédiaire entre le stockage des données brutes ou traitées et leur exploitation dans les fonctionnalités analytiques de VogueMind.
+
+### 9.15. Entraînement d'un modèle de prédiction de réachat
+
+Cette semaine, nous avons également commencé la partie Machine Learning du projet en développant le script :
+
+```text
+batch/train_model.py
+```
+
+L'objectif est de prédire la probabilité qu'un client effectue un nouvel achat, à partir de son historique de transactions.
+
+Pour cette première expérimentation, nous avons utilisé un échantillon correspondant à **5 % des clients**, afin de réaliser les tests dans l'environnement Spark disponible.
+
+Le traitement a été exécuté avec la commande :
+
+```powershell
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/voguemind/batch/train_model.py --customer-pct 5 --version v1
+```
+
+**Données utilisées :**
+
+| Élément | Nombre |
+|---|---:|
+| Données d'entraînement | 76 852 |
+| Données de validation | 13 201 |
+| Données de test | 13 048 |
+
+La séparation des données a été réalisée chronologiquement afin de respecter l'ordre temporel des transactions.
+
+**Modèles expérimentés :**
+
+- Une règle de référence basée sur un achat effectué dans les 7 jours.
+- Logistic Regression.
+- Random Forest.
+- Gradient Boosting.
+
+Après la comparaison des modèles sur les données de validation, la régression logistique a été retenue pour une étape de réglage des hyperparamètres.
+
+Les meilleurs paramètres obtenus pendant cette étape sont :
+
+- `regParam = 0.01`
+- `elasticNetParam = 0.5`
+
+### 9.16. Évaluation du modèle sur les données de test
+
+Après le réglage du modèle, nous avons évalué ses performances sur un ensemble de test distinct.
+
+Les résultats obtenus sont les suivants :
+
+| Métrique | Modèle de référence | Régression logistique |
+|---|---:|---:|
+| Precision | 0.188 | 0.207 |
+| Recall | 0.374 | 0.458 |
+| F1-score | 0.250 | 0.285 |
+| AUC | — | 0.632 |
+
+Les résultats montrent une amélioration du F1-score, qui passe de **0.250 à 0.285**, ainsi qu'une amélioration du rappel.
+
+Le modèle permet donc d'obtenir de meilleurs résultats que la règle de référence sur cet échantillon de test. Toutefois, les performances restent perfectibles et nécessitent des expérimentations supplémentaires.
+
+Cette première évaluation constitue une base pour améliorer progressivement la prédiction du réachat dans VogueMind.
+
+### 9.17. Sauvegarde du modèle entraîné dans HDFS
+
+Après l'entraînement et l'évaluation, nous avons sauvegardé le modèle de régression logistique dans Hadoop HDFS.
+
+Le modèle est enregistré dans le répertoire suivant :
+
+```text
+/voguemind/models/repurchase_v1
+```
+
+Son adresse complète est :
+
+```text
+hdfs://namenode:9000/voguemind/models/repurchase_v1
+```
+
+La vérification du contenu du répertoire a permis de constater la présence des différents éléments du pipeline MLlib, notamment :
+
+- StringIndexer.
+- OneHotEncoder.
+- VectorAssembler.
+- StandardScaler.
+- LogisticRegression.
+
+Les fichiers de données et les métadonnées du modèle sont également présents dans HDFS.
+
+Cette sauvegarde permet de conserver le modèle entraîné dans l'infrastructure distribuée du projet et de préparer son utilisation dans une prochaine étape de prédiction.
+
+### 9.18. Génération des rapports de résultats du Machine Learning
+
+Afin de conserver les résultats de l'expérimentation, nous avons généré deux fichiers récapitulatifs :
+
+```text
+results/ml_metrics_v1.md
+results/ml_metrics_v1.json
+```
+
+Le premier fichier présente les résultats sous forme de rapport lisible, tandis que le second conserve les métriques au format JSON pour faciliter leur exploitation ultérieure.
+
+Ces fichiers permettent de documenter les expérimentations et de comparer les performances des futures versions du modèle.
+
+### 9.19. Sauvegarde des développements sur GitHub
+
+À la fin de cette étape, nous avons également sauvegardé les nouveaux développements et les résultats dans le dépôt GitHub du projet VogueMind.
+
+Les éléments ajoutés comprennent notamment :
+
+- Les captures et éléments de documentation HDFS déjà réalisés.
+- Le script `inspect_raw.py`.
+- Les rapports de résultats du Machine Learning.
+- Les modifications apportées à la configuration Docker Compose.
+
+Les modifications ont été enregistrées dans un commit intitulé :
+
+```text
+Add HDFS screenshots and ML training results
+```
+
+Le commit a ensuite été envoyé avec succès sur la branche `main` du dépôt GitHub.
+
+Cette étape permet de conserver une version centralisée des développements réalisés et de faciliter le suivi du travail de l'équipe.
 
 ## 10. Conclusion
 
-Cette partie du projet VogueMind m'a permis de mettre en place et de tester une infrastructure de stockage distribué avec Hadoop HDFS et Docker.
+Cette partie du projet VogueMind m'a permis de participer à la mise en place et à l'évolution de l'infrastructure Big Data basée sur Docker, Apache Hadoop HDFS et Apache Spark.
 
-J'ai commencé par configurer le NameNode et les deux DataNodes, puis j'ai vérifié leur fonctionnement, la réplication des fichiers et la persistance des données.
+J'ai commencé par configurer le NameNode et les deux DataNodes, puis j'ai vérifié le fonctionnement du cluster, la réplication des fichiers et la persistance des données.
 
-Ensuite, nous avons importé un échantillon du dataset H&M dans HDFS et vérifié son intégrité.
+Nous avons ensuite importé un échantillon du dataset H&M dans HDFS et validé son intégrité. L'intégration entre Spark et HDFS a également été testée à travers des opérations d'écriture et de lecture de données au format Parquet.
 
-Enfin, nous avons testé l'intégration avec Apache Spark en écrivant et en relisant 10 000 lignes au format Parquet.
+Au cours de cette semaine, le travail a été poursuivi avec l'archivage des transactions, le calcul des indicateurs métier et une première expérimentation de Machine Learning visant à prédire le réachat des clients.
 
-Les tests ont été réalisés avec succès. L'infrastructure HDFS est maintenant fonctionnelle et peut être utilisée pour la suite du projet VogueMind.
+Un modèle de régression logistique a été entraîné, évalué et sauvegardé dans HDFS. Les résultats ont montré une amélioration par rapport à la règle de référence, même si des améliorations restent nécessaires.
 
-La prochaine étape consiste à poursuivre l'intégration des différents composants du pipeline Big Data, notamment Kafka, Spark et HDFS.
+Enfin, les nouveaux développements et les rapports de résultats ont été sauvegardés sur GitHub.
+
+L'infrastructure HDFS est opérationnelle, les échanges entre Kafka, Spark et HDFS ont été testés sur un échantillon de transactions, et une première version du modèle de prédiction de réachat a été entraînée et enregistrée.
+
+Les prochaines étapes consistent à améliorer les performances du modèle, à exploiter celui-ci pour générer des prédictions clients et à poursuivre son intégration dans le système de recommandation de VogueMind.
 
 ---
 
 **Projet :** VogueMind  
-**Composant :** Infrastructure Hadoop HDFS  
+**Composant :** Infrastructure Hadoop HDFS et intégration Big Data  
 **Réalisée par :** Salma Hilali  
-**Statut :** Cluster HDFS opérationnel, dataset H&M importé et intégration Spark-HDFS validée.
+**Statut :** Cluster HDFS opérationnel, intégration Kafka–Spark–HDFS testée, indicateurs calculés et première version du modèle de prédiction de réachat entraînée et sauvegardée dans HDFS.
