@@ -177,7 +177,6 @@ services:
         condition: service_healthy
       datanode2:
         condition: service_healthy
-
     command: >
       bash -c "hdfs dfsadmin -safemode wait &&
                hdfs dfs -mkdir -p
@@ -185,9 +184,7 @@ services:
                /voguemind/processed
                /voguemind/checkpoints
                /voguemind/models
-               /voguemind/tests &&
-               hdfs dfs -ls /voguemind &&
-               echo 'HDFS initialise'"
+               /voguemind/tests"
 
     restart: "no"
 

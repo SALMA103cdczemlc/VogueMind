@@ -1,0 +1,206 @@
+{
+  "run_at": "2026-11-22T14:26:13",
+  "data": {
+    "history_start": "2018-09-20",
+    "history_end": "2018-12-12",
+    "cutoffs": [
+      "2018-10-18",
+      "2018-10-25",
+      "2018-11-01",
+      "2018-11-08",
+      "2018-11-15",
+      "2018-11-22",
+      "2018-11-29",
+      "2018-12-06"
+    ],
+    "train_cutoffs": "2018-10-18, 2018-10-25, 2018-11-01, 2018-11-08, 2018-11-15, 2018-11-22",
+    "valid_cutoff": "2018-11-29",
+    "test_cutoff": "2018-12-06",
+    "train_rows": 76852,
+    "valid_rows": 13201,
+    "test_rows": 13048,
+    "train_pos_rate": 0.1477515224067038,
+    "customer_pct": 5,
+    "lookback_days": 28,
+    "horizon_days": 7
+  },
+  "validation": {
+    "reference": {
+      "tp": 896,
+      "fp": 5218,
+      "fn": 765,
+      "tn": 6322,
+      "precision": 0.1465,
+      "recall": 0.5394,
+      "f1": 0.2305,
+      "accuracy": 0.5468
+    },
+    "techniques": {
+      "regression_logistique": {
+        "tp": 870,
+        "fp": 3537,
+        "fn": 791,
+        "tn": 8003,
+        "precision": 0.1974,
+        "recall": 0.5238,
+        "f1": 0.2868,
+        "accuracy": 0.6721,
+        "auc": 0.6367,
+        "train_seconds": 32.8
+      },
+      "foret_aleatoire": {
+        "tp": 918,
+        "fp": 3837,
+        "fn": 743,
+        "tn": 7703,
+        "precision": 0.1931,
+        "recall": 0.5527,
+        "f1": 0.2862,
+        "accuracy": 0.6531,
+        "auc": 0.6401,
+        "train_seconds": 21.1
+      },
+      "gradient_boosting": {
+        "tp": 872,
+        "fp": 3579,
+        "fn": 789,
+        "tn": 7961,
+        "precision": 0.1959,
+        "recall": 0.525,
+        "f1": 0.2853,
+        "accuracy": 0.6691,
+        "auc": 0.6445,
+        "train_seconds": 38.7
+      }
+    }
+  },
+  "tuning": {
+    "technique": "regression_logistique",
+    "grid": [
+      {
+        "params": {
+          "regParam": 0.0,
+          "elasticNetParam": 0.0
+        },
+        "tp": 867,
+        "fp": 3530,
+        "fn": 794,
+        "tn": 8010,
+        "precision": 0.1972,
+        "recall": 0.522,
+        "f1": 0.2862,
+        "accuracy": 0.6724,
+        "auc": 0.6357,
+        "train_seconds": 12.7
+      },
+      {
+        "params": {
+          "regParam": 0.0,
+          "elasticNetParam": 0.5
+        },
+        "tp": 867,
+        "fp": 3530,
+        "fn": 794,
+        "tn": 8010,
+        "precision": 0.1972,
+        "recall": 0.522,
+        "f1": 0.2862,
+        "accuracy": 0.6724,
+        "auc": 0.6357,
+        "train_seconds": 12.5
+      },
+      {
+        "params": {
+          "regParam": 0.01,
+          "elasticNetParam": 0.0
+        },
+        "tp": 870,
+        "fp": 3537,
+        "fn": 791,
+        "tn": 8003,
+        "precision": 0.1974,
+        "recall": 0.5238,
+        "f1": 0.2868,
+        "accuracy": 0.6721,
+        "auc": 0.6367,
+        "train_seconds": 10.3
+      },
+      {
+        "params": {
+          "regParam": 0.01,
+          "elasticNetParam": 0.5
+        },
+        "tp": 870,
+        "fp": 3423,
+        "fn": 791,
+        "tn": 8117,
+        "precision": 0.2027,
+        "recall": 0.5238,
+        "f1": 0.2922,
+        "accuracy": 0.6808,
+        "auc": 0.6344,
+        "train_seconds": 13.8
+      },
+      {
+        "params": {
+          "regParam": 0.1,
+          "elasticNetParam": 0.0
+        },
+        "tp": 880,
+        "fp": 3684,
+        "fn": 781,
+        "tn": 7856,
+        "precision": 0.1928,
+        "recall": 0.5298,
+        "f1": 0.2827,
+        "accuracy": 0.6618,
+        "auc": 0.6376,
+        "train_seconds": 8.5
+      },
+      {
+        "params": {
+          "regParam": 0.1,
+          "elasticNetParam": 0.5
+        },
+        "tp": 800,
+        "fp": 3056,
+        "fn": 861,
+        "tn": 8484,
+        "precision": 0.2075,
+        "recall": 0.4816,
+        "f1": 0.29,
+        "accuracy": 0.7033,
+        "auc": 0.6195,
+        "train_seconds": 8.8
+      }
+    ],
+    "best_params": {
+      "regParam": 0.01,
+      "elasticNetParam": 0.5
+    }
+  },
+  "test": {
+    "reference": {
+      "tp": 643,
+      "fp": 2787,
+      "fn": 1075,
+      "tn": 8543,
+      "precision": 0.1875,
+      "recall": 0.3743,
+      "f1": 0.2498,
+      "accuracy": 0.704
+    },
+    "model": {
+      "tp": 787,
+      "fp": 3019,
+      "fn": 931,
+      "tn": 8311,
+      "precision": 0.2068,
+      "recall": 0.4581,
+      "f1": 0.2849,
+      "accuracy": 0.6973,
+      "auc": 0.6321
+    }
+  },
+  "model_path": "hdfs://namenode:9000/voguemind/models/repurchase_v1"
+}
